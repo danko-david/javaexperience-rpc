@@ -286,6 +286,12 @@ public class JavaFunctionRpcWrapper<C extends RpcRequest> implements RpcFunction
 	{
 		Class cls = extractClass(type);
 		
+		NotatedCaster ret = WELL_KNOWN_CASTERS.get(cls);
+		if(null != ret)
+		{
+			return ret;
+		}
+		
 		if(cls.isArray())
 		{
 			NotatedCaster c = arrayCaster(cls);
@@ -303,7 +309,7 @@ public class JavaFunctionRpcWrapper<C extends RpcRequest> implements RpcFunction
 			}
 		}
 		
-		return WELL_KNOWN_CASTERS.get(cls);
+		return null;
 	}
 	
 	protected static ConcurrentMap<Class<?>, NotatedCaster> CASTERS = new ConcurrentHashMap<>();
