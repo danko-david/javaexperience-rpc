@@ -35,6 +35,8 @@ import eu.javaexperience.io.IOStream;
 import eu.javaexperience.reflect.CastTo;
 import eu.javaexperience.reflect.Mirror;
 import eu.javaexperience.reflect.Mirror.ClassData;
+import eu.javaexperience.reflect.NotatedCaster;
+import eu.javaexperience.rpc.RpcCastTools;
 import eu.javaexperience.rpc.RpcProtocolHandler;
 import eu.javaexperience.rpc.RpcRequest;
 import eu.javaexperience.rpc.RpcTools;
@@ -372,7 +374,8 @@ public class JavaRpcClientTools
 					{
 						return ex;
 					}
-					CastTo caster = CastTo.getCasterRestrictlyForTargetClass(r);
+					
+					NotatedCaster caster = RpcCastTools.tryCreateCaster(r);
 					if(null != caster)
 					{
 						 Object e = caster.cast(ex);
