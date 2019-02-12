@@ -24,6 +24,7 @@ import eu.javaexperience.reflect.Mirror;
 import eu.javaexperience.reflect.NotatedCaster;
 import eu.javaexperience.rpc.RpcFunction;
 import eu.javaexperience.rpc.RpcRequest;
+import eu.javaexperience.text.Format;
 
 //TODO make abstract parent for this and JavaAsIsFunctionWrapper
 public class JavaFunctionRpcWrapper<C extends RpcRequest> implements RpcFunction<C, RpcFunctionParameter>
@@ -246,6 +247,37 @@ public class JavaFunctionRpcWrapper<C extends RpcRequest> implements RpcFunction
 			public String getTypeFullQualifiedName()
 			{
 				return "java.lang.Map";
+			}
+		});
+		
+		WELL_KNOWN_CASTERS.put(byte[].class, new NotatedCaster()
+		{
+			@Override
+			public Object cast(Object in)
+			{
+				if(in instanceof byte[])
+				{
+					return in;
+				}
+				
+				if(in instanceof String)
+				{
+					return Format.base64Decode((String) in);
+				}
+				
+				return null;
+			}
+			
+			@Override
+			public String getTypeShortName()
+			{
+				return "byte[]";
+			}
+			
+			@Override
+			public String getTypeFullQualifiedName()
+			{
+				return "byte[]";
 			}
 		});
 	}
