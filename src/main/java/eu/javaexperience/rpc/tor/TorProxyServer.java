@@ -5,6 +5,7 @@ import eu.javaexperience.io.IOStream;
 import eu.javaexperience.io.fd.IOStreamFactory;
 import eu.javaexperience.parse.ParsePrimitive;
 import eu.javaexperience.proxy.TorProxySpawner;
+import eu.javaexperience.proxy.TorSpawnerStorage;
 import eu.javaexperience.rpc.JavaClassRpcCollector;
 import eu.javaexperience.rpc.JavaClassRpcFunctions;
 import eu.javaexperience.rpc.RpcDefaultProtocol;
@@ -20,6 +21,9 @@ import java.util.HashMap;
 
 public class TorProxyServer
 {
+	protected static TorSpawnerStorage TOR_SPAWN =
+			new TorSpawnerStorage(TorProxySpawner.runtimeThrowCreate("./tor"), 1024, 300000);
+	
 	public static void main(String[] args) throws IOException
 	{
 		new File("./tor").mkdirs();
@@ -56,7 +60,7 @@ public class TorProxyServer
 			{
 				try
 				{
-					getTorAtOffset(i);
+					get_proxy_offset(null, i);
 				}
 				catch (InterruptedException e)
 				{
@@ -66,22 +70,8 @@ public class TorProxyServer
 		}
 	}
 	
-	protected static TorProxySpawner TOR_SPAWN = TorProxySpawner.runtimeThrowCreate("./tor");
-	protected static final HashMap<Integer, TorProxySpawner.TorProxy> TORS = new HashMap();
-	
-	protected static synchronized TorProxySpawner.TorProxy getTorAtOffset(int offset) throws InterruptedException, IOException
-	{
-		TorProxySpawner.TorProxy tp = TORS.get(Integer.valueOf(offset));
-		if (tp == null)
-		{
-			tp = TOR_SPAWN.spawnWithOffset(offset);
-			TORS.put(Integer.valueOf(offset), tp);
-		}
-		return tp;
-	}
-	
 	public static int get_proxy_offset(SimpleRpcRequest req, int index) throws InterruptedException, IOException
 	{
-		return getTorAtOffset(index).getPort();
+		return TOR_SPAWN.getAtOffset(index).getPort();
 	}
 }
