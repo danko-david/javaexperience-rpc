@@ -2,6 +2,7 @@ package eu.javaexperience.rpc.tor;
 
 import eu.javaexperience.datareprez.jsonImpl.DataObjectJsonImpl;
 import eu.javaexperience.io.IOStream;
+import eu.javaexperience.io.IOTools;
 import eu.javaexperience.io.fd.IOStreamFactory;
 import eu.javaexperience.parse.ParsePrimitive;
 import eu.javaexperience.proxy.TorProxySpawner;
@@ -14,15 +15,21 @@ import eu.javaexperience.rpc.SimpleRpcRequest;
 import eu.javaexperience.rpc.SimpleRpcSession;
 import eu.javaexperience.rpc.SocketRpcServer;
 import eu.javaexperience.rpc.codegen.JavaRpcInterfaceGenerator;
+import eu.javaexperience.time.TimeCalc;
+
 import java.io.File;
 import java.io.IOException;
 import java.net.ServerSocket;
-import java.util.HashMap;
 
 public class TorProxyServer
 {
 	protected static TorSpawnerStorage TOR_SPAWN =
-			new TorSpawnerStorage(TorProxySpawner.runtimeThrowCreate("./tor"), 1024, 300000);
+			new TorSpawnerStorage(TorProxySpawner.runtimeThrowCreate("./tor"), 1024, 10*TimeCalc.minutes_ms);
+	
+	static
+	{
+		IOTools.closeOnExit(TOR_SPAWN);
+	}
 	
 	public static void main(String[] args) throws IOException
 	{
@@ -72,6 +79,9 @@ public class TorProxyServer
 	
 	public static int get_proxy_offset(SimpleRpcRequest req, int index) throws InterruptedException, IOException
 	{
-		return TOR_SPAWN.getAtOffset(index).getPort();
+		synchronized (TOR_SPAWN)
+		{
+			return TOR_SPAWN.getAtOffset(index).getPort();
+		}
 	}
 }
