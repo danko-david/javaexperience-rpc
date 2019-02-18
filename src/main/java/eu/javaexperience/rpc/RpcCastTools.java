@@ -6,11 +6,13 @@ import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.lang.reflect.TypeVariable;
 import java.lang.reflect.WildcardType;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
+import eu.javaexperience.arrays.ArrayTools;
 import eu.javaexperience.collection.map.SmallMap;
 import eu.javaexperience.datareprez.DataObject;
 import eu.javaexperience.datareprez.DataReprezTools;
@@ -55,10 +57,10 @@ public class RpcCastTools
 							return null;
 						}
 						
-						Object[] ret = (Object[]) Array.newInstance(component, len);
+						Object ret = Array.newInstance(component, len);
 						for(int i=0;i<len;++i)
 						{
-							ret[i] = c.cast(tryGetIndex(in, i));
+							Array.set(ret, i, c.cast(tryGetIndex(in, i)));
 						}
 						
 						return ret;

@@ -3,16 +3,20 @@ package eu.javaexperience.rpc.cli;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
+import java.util.ArrayList;
+
 import org.junit.Test;
 
+import eu.javaexperience.datareprez.ArrayLike;
+import eu.javaexperience.datareprez.DataArray;
 import eu.javaexperience.datareprez.DataObject;
 import eu.javaexperience.datareprez.DataReprezTools;
-import eu.javaexperience.datareprez.javaImpl.DataObjectJavaImpl;
+import eu.javaexperience.reflect.Mirror;
 import eu.javaexperience.rpc.JavaClassRpcUnboundFunctionsInstance;
 import eu.javaexperience.rpc.RpcFacility;
 import eu.javaexperience.rpc.RpcSession;
 import eu.javaexperience.rpc.RpcSessionTools;
-import eu.javaexperience.rpc.RpcTools;
+import eu.javaexperience.text.StringTools;
 
 public class CliRpcToolsTest
 {
@@ -40,6 +44,38 @@ public class CliRpcToolsTest
 			DataObject obj = sess.getDefaultRpcProtocolHandler().getDefaultCommunicationProtocolPrototype().newObjectInstance();
 			DataReprezTools.put(obj, key, value);
 			return obj;
+		}
+		
+		public String[] iVarArgs(int num, String... args)
+		{
+			return args;
+		}
+		
+		public String[] iSVarArgs(int num, String a, String... args)
+		{
+			return args;
+		}
+		
+		public String[] varArgs(String... args)
+		{
+			return args;
+		}
+		
+		public String[] vaCC(String a, String b, String... args)
+		{
+			ArrayList<String> ret = new ArrayList<>();
+			ret.add(a);
+			ret.add(b);
+			for(String s:args)
+			{
+				ret.add(s);
+			}
+			return ret.toArray(Mirror.emptyStringArray);
+		}
+		
+		public int[] vaInt(int... args)
+		{
+			return args;
 		}
 	}
 	
@@ -91,4 +127,131 @@ public class CliRpcToolsTest
 		DataObject obj = ret.getObject("r");
 		assertEquals("value", obj.getString("key"));
 	}
+	
+	@Test
+	public void testCliVarArgs()
+	{
+		DataObject ret = invoke("varArgs");
+		DataArray arr = ret.getArray("r");
+		assertEquals(0, arr.size());
+	}
+	
+	@Test
+	public void testCliVarArgs1()
+	{
+		DataObject ret = invoke("varArgs", "a");
+		DataArray arr = ret.getArray("r");
+		assertEquals(1, arr.size());
+		assertEquals("a", arr.getString(0));
+	}
+	
+	@Test
+	public void testCliVarArgs2()
+	{
+		DataObject ret = invoke("varArgs", "a", "b");
+		DataArray arr = ret.getArray("r");
+		assertEquals(2, arr.size());
+		assertEquals("a", arr.getString(0));
+		assertEquals("b", arr.getString(1));
+	}
+	
+	@Test
+	public void testCliIVarArgs()
+	{
+		DataObject ret = invoke("iVarArgs", "1");
+		DataArray arr = ret.getArray("r");
+		assertEquals(0, arr.size());
+	}
+	
+	@Test
+	public void testCliIVarArgs1()
+	{
+		DataObject ret = invoke("iVarArgs", "1", "a");
+		DataArray arr = ret.getArray("r");
+		assertEquals(1, arr.size());
+		assertEquals("a", arr.getString(0));
+	}
+	
+	@Test
+	public void testCliIVarArgs2()
+	{
+		DataObject ret = invoke("iVarArgs", "1", "a", "b");
+		DataArray arr = ret.getArray("r");
+		assertEquals(2, arr.size());
+		assertEquals("a", arr.getString(0));
+		assertEquals("b", arr.getString(1));
+	}
+	
+	@Test
+	public void testCliISVarArgs()
+	{
+		DataObject ret = invoke("iSVarArgs", "1", "x");
+		DataArray arr = ret.getArray("r");
+		assertEquals(0, arr.size());
+	}
+	
+	@Test
+	public void testCliISVarArgs1()
+	{
+		DataObject ret = invoke("iSVarArgs", "1", "x", "a");
+		DataArray arr = ret.getArray("r");
+		assertEquals(1, arr.size());
+		assertEquals("a", arr.getString(0));
+	}
+	
+	@Test
+	public void testCliISVarArgs2()
+	{
+		DataObject ret = invoke("iSVarArgs", "1", "x", "a", "b");
+		DataArray arr = ret.getArray("r");
+		assertEquals(2, arr.size());
+		assertEquals("a", arr.getString(0));
+		assertEquals("b", arr.getString(1));
+	}
+	
+	@Test
+	public void testCliVacc()
+	{
+		DataObject ret = invoke("vaCC", "1", "x");
+		DataArray arr = ret.getArray("r");
+		assertEquals(2, arr.size());
+		assertEquals("1", arr.getString(0));
+		assertEquals("x", arr.getString(1));
+	}
+	
+	@Test
+	public void testCliVacc1()
+	{
+		DataObject ret = invoke("vaCC", "1", "x", "b");
+		DataArray arr = ret.getArray("r");
+		assertEquals(3, arr.size());
+		assertEquals("1", arr.getString(0));
+		assertEquals("x", arr.getString(1));
+		assertEquals("b", arr.getString(2));
+	}
+
+	@Test
+	public void testCliVacc2()
+	{
+		DataObject ret = invoke("vaCC", "1", "x", "b", "c");
+		DataArray arr = ret.getArray("r");
+		assertEquals(4, arr.size());
+		assertEquals("1", arr.getString(0));
+		assertEquals("x", arr.getString(1));
+		assertEquals("b", arr.getString(2));
+		assertEquals("c", arr.getString(3));
+	}
+	
+	@Test
+	public void testVaInt()
+	{
+		DataObject ret = invoke("vaInt", "1", "2", "3", "4");
+		DataArray arr = ret.getArray("r");
+		assertEquals(4, arr.size());
+		assertEquals(1, arr.getInt(0));
+		assertEquals(2, arr.getInt(1));
+		assertEquals(3, arr.getInt(2));
+		assertEquals(4, arr.getInt(3));
+	}
+	
 }
