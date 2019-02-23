@@ -57,17 +57,20 @@ public class RpcCliTools
 				Method m = ((JavaFunctionRpcWrapper) func).getJavaMethod();
 				
 				Parameter[] pcs = m.getParameters();
-				if(pcs[pcs.length-1].isVarArgs())
+				if(0 != pcs.length)
 				{
-					//wrap varargs
-					Object[] p2 = Arrays.copyOfRange(args, 1, pcs.length+1, Object[].class);
-					Object[] va = Mirror.emptyObjectArray;
-					if(params.length >= pcs.length)
+					if(pcs[pcs.length-1].isVarArgs())
 					{
-						va = Arrays.copyOfRange(args, pcs.length, params.length+1, Object[].class);
+						//wrap varargs
+						Object[] p2 = Arrays.copyOfRange(args, 1, pcs.length+1, Object[].class);
+						Object[] va = Mirror.emptyObjectArray;
+						if(params.length >= pcs.length)
+						{
+							va = Arrays.copyOfRange(args, pcs.length, params.length+1, Object[].class);
+						}
+						p2[p2.length-1] = va;
+						params = p2;
 					}
-					p2[p2.length-1] = va;
-					params = p2;
 				}
 			}
 			
@@ -89,4 +92,16 @@ public class RpcCliTools
 	{
 		return JavaRpcInterfaceGenerator.BASIC_JAVA_SOURCE_BUILDER.buildRpcClientSource("Cli", facility.getWrappedFunctions(), NullMap.instance);
 	}
+	
+	public static DataObject cliExecOrHelp(@MayNull RpcSession session, RpcFacility rpc, String... args)
+	{
+		if(0 == args.length)
+		{
+			generateCliHelp(rpc);
+			return null;
+		}
+		
+		return cliExecute(session, rpc, args);
+	}
+	
 }

@@ -7,7 +7,7 @@ import java.util.ArrayList;
 
 import org.junit.Test;
 
-import eu.javaexperience.datareprez.ArrayLike;
+import eu.javaexperience.asserts.AssertArgument;
 import eu.javaexperience.datareprez.DataArray;
 import eu.javaexperience.datareprez.DataObject;
 import eu.javaexperience.datareprez.DataReprezTools;
@@ -16,7 +16,6 @@ import eu.javaexperience.rpc.JavaClassRpcUnboundFunctionsInstance;
 import eu.javaexperience.rpc.RpcFacility;
 import eu.javaexperience.rpc.RpcSession;
 import eu.javaexperience.rpc.RpcSessionTools;
-import eu.javaexperience.text.StringTools;
 
 public class CliRpcToolsTest
 {
@@ -76,6 +75,11 @@ public class CliRpcToolsTest
 		public int[] vaInt(int... args)
 		{
 			return args;
+		}
+		
+		public void call()
+		{
+			System.out.println("call");
 		}
 	}
 	
@@ -252,6 +256,13 @@ public class CliRpcToolsTest
 		assertEquals(2, arr.getInt(1));
 		assertEquals(3, arr.getInt(2));
 		assertEquals(4, arr.getInt(3));
+	}
+	
+	@Test
+	public void testCall()
+	{
+		DataObject ret = invoke("call");
+		AssertArgument.assertTrue(ret.isNull("r"), "return value must be \"null\"");
 	}
 	
 }
