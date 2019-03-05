@@ -35,7 +35,7 @@
     <dependency>
 		<groupId>javaexperience</groupId>
 		<artifactId>core</artifactId>
-		<version>0.0.6</version>
+		<version>0.0.7</version>
 	</dependency>
 	<dependency>
 		<groupId>javaexperience</groupId>
@@ -78,6 +78,18 @@
 						<phase>test</phase>
 						<goals>
 							<goal>report</goal>
+						</goals>
+					</execution>
+				</executions>
+			</plugin>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-source-plugin</artifactId>
+				<executions>
+					<execution>
+						<id>attach-sources</id>
+						<goals>
+							<goal>jar</goal>
 						</goals>
 					</execution>
 				</executions>
