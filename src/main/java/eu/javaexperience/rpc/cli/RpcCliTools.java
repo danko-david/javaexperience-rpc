@@ -97,7 +97,7 @@ public class RpcCliTools
 	{
 		if(0 == args.length)
 		{
-			generateCliHelp(rpc);
+			System.out.println(generateCliHelp(rpc));
 			return null;
 		}
 		

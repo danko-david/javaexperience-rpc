@@ -4,7 +4,7 @@
 
   <groupId>javaexperience</groupId>
   <artifactId>rpc</artifactId>
-  <version>1.0.8</version>
+  <version>1.0.9</version>
   <packaging>jar</packaging>
 
   <name>rpc</name>
@@ -44,7 +44,7 @@
 	</dependency>
   </dependencies>
   
-  <distributionManagement>
+	<distributionManagement>
 		<repository>
 			<id>localised-repo</id>
 			<url>file:///${user.home}/maven-distribution/</url>

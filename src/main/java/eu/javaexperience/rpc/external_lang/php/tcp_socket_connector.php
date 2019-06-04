@@ -16,7 +16,7 @@ class SocketConnector
 	
 	public function txrx($arr)
 	{
-        fwrite($this->socket, json_encode($arr) . chr(10));
+		fwrite($this->socket, json_encode($arr) . chr(10));
 
 		$str = fgets($this->socket);
 		if($str === false)
