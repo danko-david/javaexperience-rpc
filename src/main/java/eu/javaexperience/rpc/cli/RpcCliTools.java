@@ -5,6 +5,8 @@ import java.lang.reflect.Parameter;
 import java.util.Arrays;
 import java.util.Collection;
 
+import eu.javaexperience.cli.CliEntry;
+import eu.javaexperience.cli.CliTools;
 import eu.javaexperience.collection.map.NullMap;
 import eu.javaexperience.datareprez.DataObject;
 import eu.javaexperience.reflect.Mirror;
@@ -104,4 +106,10 @@ public class RpcCliTools
 		return cliExecute(session, rpc, args);
 	}
 	
+	public static void printHelpAndExit(String programName, int exitCode, CliEntry... entries)
+	{
+		System.err.println("Usage of "+prograName+":\n");
+		System.err.println(CliTools.renderListAllOption(entries));
+		System.exit(exitCode);
+	}
 }

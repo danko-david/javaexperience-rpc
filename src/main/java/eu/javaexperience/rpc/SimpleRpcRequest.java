@@ -4,7 +4,6 @@ import java.util.Map;
 
 import eu.javaexperience.collection.map.SmallMap;
 import eu.javaexperience.datareprez.DataObject;
-import eu.javaexperience.rpc.bidirectional.BidirectionalRpcProtocolHandler;
 import eu.javaexperience.semantic.references.MayNotNull;
 
 public class SimpleRpcRequest implements RpcRequest
