@@ -10,6 +10,7 @@ import eu.javaexperience.cli.CliTools;
 import eu.javaexperience.collection.map.NullMap;
 import eu.javaexperience.datareprez.DataObject;
 import eu.javaexperience.reflect.Mirror;
+import eu.javaexperience.rpc.JavaClassRpcUnboundFunctionsInstance;
 import eu.javaexperience.rpc.RpcFacility;
 import eu.javaexperience.rpc.RpcFunction;
 import eu.javaexperience.rpc.RpcRequest;
@@ -106,10 +107,22 @@ public class RpcCliTools
 		return cliExecute(session, rpc, args);
 	}
 	
-	public static void printHelpAndExit(String programName, int exitCode, CliEntry... entries)
+	public static void executeCommandCollectorClass(Object collector, String... args)
 	{
-		System.err.println("Usage of "+programName+":\n");
-		System.err.println(CliTools.renderListAllOption(entries));
-		System.exit(exitCode);
+		RpcFacility rpc = new JavaClassRpcUnboundFunctionsInstance<>(collector, collector.getClass());
+		RpcCliTools.cliExecute(null, rpc, args).getImpl();
 	}
+	
+	public static void tryExecuteCommandCollectorClassOrExit(Object collector, int exitCode, String... args)
+	{
+		RpcFacility rpc = new JavaClassRpcUnboundFunctionsInstance<>(collector, collector.getClass());
+		if(0 == args.length)
+		{
+			System.err.println(generateCliHelp(rpc));
+			System.exit(exitCode);
+		}
+		RpcCliTools.cliExecute(null, rpc, args).getImpl();
+	}
+	
 }
+
