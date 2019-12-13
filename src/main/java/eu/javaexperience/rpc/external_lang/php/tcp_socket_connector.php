@@ -34,22 +34,3 @@ class SocketConnector
 	}
 }
 
-class NamespaceConnector
-{
-	private $origin;
-	private $ns;
-	
-	public function __construct($origin, $ns)
-	{
-		$this->origin = $origin;
-		$this->ns = $ns;
-	}
-	
-	public function txrx($arr)
-	{
-		$arr['N'] = $this->ns;
-		return $origin->txrx($arr);
-	}
-}
-
-

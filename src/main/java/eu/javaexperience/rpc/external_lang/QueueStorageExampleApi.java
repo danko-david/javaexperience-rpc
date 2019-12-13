@@ -41,7 +41,7 @@ public class QueueStorageExampleApi extends JavaClassRpcFunctions<SimpleRpcReque
 	
 	public static String staticTryGetOrNull(SimpleRpcRequest req)
 	{
-		return QUEUE.poll(); 
+		return QUEUE.poll();
 	}
 	
 	public static String staticPeek(SimpleRpcRequest req)
@@ -59,7 +59,6 @@ public class QueueStorageExampleApi extends JavaClassRpcFunctions<SimpleRpcReque
 		QUEUE.clear();
 	}
 
-	
 	protected static Queue<String> getOrCreateSessionQueue(SimpleRpcRequest req)
 	{
 		SimpleRpcSession sess = (SimpleRpcSession) req.getRpcSession();
@@ -69,7 +68,7 @@ public class QueueStorageExampleApi extends JavaClassRpcFunctions<SimpleRpcReque
 		}
 		
 		Queue<String> q = (Queue<String>) sess.get("QUEUE");
-		if(null != q)
+		if(null == q)
 		{
 			sess.put("QUEUE", q = new LinkedBlockingQueue<String>());
 		}
@@ -99,7 +98,8 @@ public class QueueStorageExampleApi extends JavaClassRpcFunctions<SimpleRpcReque
 	
 	public static String sessionTryGetOrNull(SimpleRpcRequest req)
 	{
-		return getOrCreateSessionQueue(req).poll(); 
+		String ret = getOrCreateSessionQueue(req).poll();
+		return ret;
 	}
 	
 	public static String sessionPeek(SimpleRpcRequest req)

@@ -10,9 +10,7 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
 import java.net.Socket;
 import java.net.URL;
-import java.net.URLConnection;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -29,10 +27,12 @@ import eu.javaexperience.datareprez.DataArray;
 import eu.javaexperience.datareprez.DataObject;
 import eu.javaexperience.datareprez.DataReceiver;
 import eu.javaexperience.datareprez.DataSender;
+import eu.javaexperience.datareprez.convertFrom.ArrayLike;
+import eu.javaexperience.interfaces.ObjectWithProperty;
 import eu.javaexperience.interfaces.simple.SimpleGet;
 import eu.javaexperience.interfaces.simple.getBy.GetBy1;
+import eu.javaexperience.interfaces.simple.publish.SimplePublish1;
 import eu.javaexperience.io.IOStream;
-import eu.javaexperience.reflect.CastTo;
 import eu.javaexperience.reflect.Mirror;
 import eu.javaexperience.reflect.Mirror.ClassData;
 import eu.javaexperience.reflect.NotatedCaster;
@@ -43,6 +43,7 @@ import eu.javaexperience.rpc.RpcTools;
 import eu.javaexperience.rpc.SimpleRpcSession;
 import eu.javaexperience.rpc.bidirectional.RpcClientProtocolHandler;
 import eu.javaexperience.semantic.references.MayNull;
+import eu.javaexperience.url.UrlDownloadTools;
 
 public class JavaRpcClientTools
 {
@@ -111,115 +112,27 @@ public class JavaRpcClientTools
 	public static <T> T createApiHttp(Class<T> type, final URL url, @MayNull final String namespace, final RpcProtocolHandler proto)
 	{
 		return createApiWithTransactionHandler
-		(
-			type,
-			new GetBy1<DataObject, DataObject>()
-			{
-				@Override
-				public DataObject getBy(DataObject a)
-				{
-					try
+				(
+					type,
+					new GetBy1<DataObject, DataObject>()
 					{
-						URLConnection connection = url.openConnection();
-						byte[] post = a.toBlob();
-						
-						if(null != post)
+						@Override
+						public DataObject getBy(DataObject a)
 						{
-							connection.addRequestProperty("Content-Length", String.valueOf(post.length));
-							connection.setDoOutput(true);
-							try(OutputStream os = connection.getOutputStream())
+							try
 							{
-								os.write(post);
-								os.flush();
+								return a.objectFromBlob(UrlDownloadTools.download(null, url, null, a.toBlob()));
+							}
+							catch(IOException e)
+							{
+								Mirror.propagateAnyway(e);
+								return null;
 							}
 						}
-						
-						try(InputStream is = connection.getInputStream())
-						{
-							int ep = 0;
-							int read = 0;
-							byte[] ret = new byte[10240];
-							
-							while((read = is.read(ret, ep, ret.length-ep))>0)
-							{
-								if(ep + read == ret.length)
-								{
-									ret = Arrays.copyOf(ret, ret.length*2);
-								}
-								
-								ep+= read;
-							}
-							
-							return a.objectFromBlob(Arrays.copyOf(ret, ep));
-						}
-					}
-					catch(IOException e)
-					{
-						Mirror.propagateAnyway(e);
-						return null;
-					}
-				}
-			},
-			namespace,
-			proto
-		);
-	}
-	
-	public static <T> T createApiHttp(Class<T> type, final SimpleGet<URLConnection> connectionCreator, @MayNull final String namespace, final RpcProtocolHandler proto)
-	{
-		return createApiWithTransactionHandler
-		(
-			type,
-			new GetBy1<DataObject, DataObject>()
-			{
-				@Override
-				public DataObject getBy(DataObject a)
-				{
-					try
-					{
-						URLConnection connection = connectionCreator.get();
-						byte[] post = a.toBlob();
-						
-						if(null != post)
-						{
-							connection.addRequestProperty("Content-Length", String.valueOf(post.length));
-							connection.setDoOutput(true);
-							try(OutputStream os = connection.getOutputStream())
-							{
-								os.write(post);
-								os.flush();
-							}
-						}
-						
-						try(InputStream is = connection.getInputStream())
-						{
-							int ep = 0;
-							int read = 0;
-							byte[] ret = new byte[10240];
-							
-							while((read = is.read(ret, ep, ret.length-ep))>0)
-							{
-								if(ep + read == ret.length)
-								{
-									ret = Arrays.copyOf(ret, ret.length*2);
-								}
-								
-								ep+= read;
-							}
-							
-							return a.objectFromBlob(Arrays.copyOf(ret, ep));
-						}
-					}
-					catch(IOException e)
-					{
-						Mirror.propagateAnyway(e);
-						return null;
-					}
-				}
-			},
-			namespace,
-			proto
-		);
+					},
+					namespace,
+					proto
+				);
 	}
 	
 	protected static List<Entry<Class,Class>> mapImpl  = new ArrayList<>();
@@ -388,5 +301,70 @@ public class JavaRpcClientTools
 				return ex;
 			}
 		});
+	}
+	
+	public static JavaRpcParallelClient createClientWithIpPort(String ip, int port, RpcProtocolHandler proto) throws IOException
+	{
+		Socket s = new Socket(ip, port);
+		return createClientWithSocket(s, proto);
+	}
+	
+	public static JavaRpcParallelClient createClientWithSocket(Socket s, RpcProtocolHandler proto) throws IOException
+	{
+		return createClientWithTxRx
+		(
+			proto.getDefaultCommunicationProtocolPrototype().newDataSender(s.getOutputStream()),
+			proto.getDefaultCommunicationProtocolPrototype().newDataReceiver(s.getInputStream()),
+			proto
+		);
+	}
+	
+	public static JavaRpcParallelClient createClientWithIOAndProto(IOStream io, RpcProtocolHandler proto) throws IOException
+	{
+		return createClientWithTxRx
+		(
+			proto.getDefaultCommunicationProtocolPrototype().newDataSender(io.getOutputStream()),
+			proto.getDefaultCommunicationProtocolPrototype().newDataReceiver(io.getInputStream()),
+			proto
+		);
+	}
+	
+	public static JavaRpcParallelClient createClientWithTxRx(DataSender send, DataReceiver rec, RpcProtocolHandler proto)
+	{
+		return new JavaRpcParallelClient(send, rec, proto);
+	}
+	
+	/**
+	 * post and longpoll
+	 * */
+	public static JavaRpcParallelClient createClientHttp(URL url, RpcProtocolHandler proto)
+	{
+		return new JavaRpcParallelClient
+		(
+			(SimplePublish1<DataObject>)obj->
+			{
+				try
+				{
+					UrlDownloadTools.download(null, url, null, obj.toBlob());
+				}
+				catch (IOException e)
+				{
+					Mirror.propagateAnyway(e);
+				}
+			}, 
+			(SimpleGet<DataObject>)()->
+			{
+				try
+				{
+					return proto.getDefaultCommunicationProtocolPrototype().objectFromBlob(UrlDownloadTools.download(null, url, null));
+				}
+				catch (IOException e)
+				{
+					Mirror.propagateAnyway(e);
+					return null;
+				}
+			},
+			proto
+		);
 	}
 }

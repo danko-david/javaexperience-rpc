@@ -2,9 +2,7 @@ package eu.javaexperience.rpc.external_lang;
 
 import java.io.IOException;
 import java.net.ServerSocket;
-import java.util.ArrayList;
 
-import eu.javaexperience.collection.CollectionTools;
 import eu.javaexperience.collection.map.BulkTransitMap;
 import eu.javaexperience.datareprez.DataObject;
 import eu.javaexperience.datareprez.jsonImpl.DataObjectJsonImpl;
@@ -18,11 +16,11 @@ import eu.javaexperience.reflect.Mirror.FieldSelector;
 import eu.javaexperience.reflect.Mirror.Select;
 import eu.javaexperience.reflect.Mirror.Visibility;
 import eu.javaexperience.rpc.RpcDefaultProtocol;
-import eu.javaexperience.rpc.RpcFacility;
 import eu.javaexperience.rpc.RpcTools;
 import eu.javaexperience.rpc.SimpleRpcRequest;
 import eu.javaexperience.rpc.SimpleRpcSession;
 import eu.javaexperience.rpc.SocketRpcServer;
+import eu.javaexperience.rpc.bidirectional.BidirectionalRpcDefaultProtocol;
 
 public class ExampleRpcServer
 {
@@ -57,13 +55,16 @@ public class ExampleRpcServer
 		};
 		
 		
-		final GetBy1<DataObject, SimpleRpcRequest> dispatcher = RpcTools.createSimpleNamespaceDispatcherWithDiscoverApi(QueueStorageExampleApi.instance);
+		final GetBy1<DataObject, SimpleRpcRequest> dispatcher = RpcTools.createSimpleNamespaceDispatcherWithDiscoverApi
+		(
+			QueueStorageExampleApi.instance
+		);
 		
 		SocketRpcServer<IOStream, SimpleRpcSession> srv = RpcTools.newServer
 		(
 			IOStreamFactory.fromServerSocket(new ServerSocket(3000)),
 			5,
-			proto,
+			BidirectionalRpcDefaultProtocol.DEFAULT_PROTOCOL_HANDLER_WITH_CLASS,
 			RpcTools.getSimpleSessionCreator(),
 			
 			new GetBy2<DataObject, SimpleRpcSession, DataObject>()
