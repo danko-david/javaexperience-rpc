@@ -122,7 +122,7 @@ public class RpcCastTools
 			@Override
 			public String getTypeFullQualifiedName()
 			{
-				return "java.lang.Map";
+				return "java.util.Map";
 			}
 		});
 		
