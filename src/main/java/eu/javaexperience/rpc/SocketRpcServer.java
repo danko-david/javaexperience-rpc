@@ -9,9 +9,11 @@ import eu.javaexperience.datareprez.DataReceiver;
 import eu.javaexperience.datareprez.DataSender;
 import eu.javaexperience.datareprez.jsonImpl.DataObjectJsonImpl;
 import eu.javaexperience.exceptions.OperationSuccessfullyEnded;
+import eu.javaexperience.interfaces.simple.publish.SimplePublish1;
 import eu.javaexperience.io.IOStream;
 import eu.javaexperience.io.IOStreamServer;
 import eu.javaexperience.io.IOTools;
+import eu.javaexperience.reflect.Mirror;
 import eu.javaexperience.semantic.references.MayNull;
 import eu.javaexperience.server.AbstractServer;
 
@@ -39,19 +41,45 @@ public abstract class SocketRpcServer<SOCK extends IOStream, SESS extends RpcSes
 		this(srv, initialWorkerCount, new RpcDefaultProtocol(new DataObjectJsonImpl()));
 	}
 	
+	protected Object createExtraContext(SOCK sock, SESS session)
+	{
+		return null;
+	}
+	
+	protected void destoryExtraContext(Object o)
+	{
+	}
+	
 	@Override
 	protected void execute(SOCK sock)
 	{
 		manageLoad();
 		DataCommon prototype = handler.getDefaultCommunicationProtocolPrototype();
-		DataSender ds = null;
 		DataReceiver rec = null;
+		SESS session = null;
+		Object ctx = null;
 		try 
 		{
-			ds = prototype.newDataSender(sock.getOutputStream());
+			DataSender ds = prototype.newDataSender(sock.getOutputStream());
+			SimplePublish1<DataObject> response = resp->
+			{
+				synchronized (ds)
+				{
+					try
+					{
+						ds.send(resp);
+					}
+					catch (IOException e)
+					{
+						Mirror.propagateAnyway(e);
+					}
+				}
+			};
 			rec = prototype.newDataReceiver(sock.getInputStream());
-			SESS session = init(sock);
+			session = init(sock);
 			RpcSessionTools.setCurrentRpcSession((RpcSession)session);
+			ctx = createExtraContext(sock, session);
+			
 			while(!sock.isClosed())
 			{
 				try
@@ -61,11 +89,7 @@ public abstract class SocketRpcServer<SOCK extends IOStream, SESS extends RpcSes
 					{
 						break;
 					}
-					DataObject resp = handleRequest(session, req);
-					if(null != resp)
-					{
-						ds.send(resp);
-					}
+					responseRequest(response, session, req, ctx);
 				}
 				catch(OperationSuccessfullyEnded skk)
 				{
@@ -79,6 +103,15 @@ public abstract class SocketRpcServer<SOCK extends IOStream, SESS extends RpcSes
 		}
 		finally
 		{
+			try
+			{
+				if(null != session)
+				{
+					session.destroy();
+				}
+			}
+			catch(Exception e)
+			{}
 			RpcSessionTools.setCurrentRpcSession(null);
 			IOTools.silentClose(sock);
 		}
@@ -90,6 +123,15 @@ public abstract class SocketRpcServer<SOCK extends IOStream, SESS extends RpcSes
 		if(!(t instanceof IOException))
 		{
 			t.printStackTrace();
+		}
+	}
+	
+	protected void responseRequest(SimplePublish1<DataObject> response, SESS sess, DataObject request, Object extraCtx)
+	{
+		DataObject resp = handleRequest(sess, request);
+		if(null != resp)
+		{
+			response.publish(resp);
 		}
 	}
 	

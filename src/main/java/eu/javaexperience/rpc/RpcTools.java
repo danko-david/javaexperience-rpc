@@ -7,6 +7,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.concurrent.ExecutorService;
 
 import eu.javaexperience.arrays.ArrayTools;
 import eu.javaexperience.asserts.AssertArgument;
@@ -14,6 +15,7 @@ import eu.javaexperience.collection.CollectionTools;
 import eu.javaexperience.datareprez.DataObject;
 import eu.javaexperience.datareprez.jsonImpl.DataObjectJsonImpl;
 import eu.javaexperience.exceptions.OperationSuccessfullyEnded;
+import eu.javaexperience.interfaces.simple.SimpleGet;
 import eu.javaexperience.interfaces.simple.getBy.GetBy1;
 import eu.javaexperience.interfaces.simple.getBy.GetBy2;
 import eu.javaexperience.io.IOStream;
