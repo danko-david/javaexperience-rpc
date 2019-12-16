@@ -174,6 +174,32 @@ public class JavaRpcParallelClient
 			revoked = true;
 			wait.evenOcurred();
 		}
+
+		/**
+		 * Similar to the root's readResponse, but this checks request responded
+		 * before reading a new packet. This is mandantory, because other thread
+		 * also tries to take the receive's lock. The bad scenario when we
+		 * waiting for the lock to acquire, other thread receives this answer,
+		 * but after, this thread acquires the locks, ang get stucked because of
+		 * blocking.
+		 * 
+		 * Unstrucking happens when this gets other's response. This thread go
+		 * trought the receive.get() call and go back to check this request
+		 * responded.
+		 * */
+		public void tryReadResponse()
+		{
+			DataObject rec = null;
+			synchronized(receive)
+			{
+				if(!isResponsed())
+				{
+					rec = receive.get();
+				}
+			}
+			AssertArgument.assertNotNull(rec, "Received packet");
+			publishResponse(rec);
+		}
 	}
 	
 	public EventMediator<DataObject> getServerEventMediator()
@@ -202,14 +228,7 @@ public class JavaRpcParallelClient
 		
 		while(!p.isResponsed() && !p.isRevoked())
 		{
-			try
-			{
-				readResponse();
-			}
-			catch (IOException e)
-			{
-				Mirror.propagateAnyway(e);
-			}
+			p.tryReadResponse();
 		}
 		
 		if(p.isRevoked())
@@ -253,7 +272,7 @@ public class JavaRpcParallelClient
 	public void readResponse() throws IOException
 	{
 		DataObject rec = null;
-		synchronized (receive)
+		synchronized(receive)
 		{
 			rec = receive.get();
 		}
