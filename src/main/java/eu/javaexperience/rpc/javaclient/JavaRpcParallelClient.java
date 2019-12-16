@@ -33,9 +33,12 @@ public class JavaRpcParallelClient
 	SimplePublish1<DataObject> send;
 	SimpleGet<DataObject> receive;
 	
+	protected Thread reader;
+	protected boolean readResponses = false;
+	
 	public JavaRpcParallelClient(DataSender send, DataReceiver rec, RpcProtocolHandler proto)
 	{
-		this.send = (o)->
+		this.send = o ->
 		{
 			try
 			{
@@ -67,7 +70,6 @@ public class JavaRpcParallelClient
 		this.receive = rec;
 		this.proto = proto;
 	}
-
 	
 	protected class JavaClientRpcPendingRequest implements Closeable
 	{
@@ -99,12 +101,12 @@ public class JavaRpcParallelClient
 		
 		protected WaitForSingleEvent wait = new WaitForSingleEvent();
 		
-		public boolean isResponsed()
+		public synchronized boolean isResponsed()
 		{
 			return null != response;
 		}
 		
-		public boolean isRevoked()
+		public synchronized boolean isRevoked()
 		{
 			return null != response && revoked;
 		}
@@ -114,10 +116,7 @@ public class JavaRpcParallelClient
 			AssertArgument.assertTrue(!isRevoked(), "Request has been revoked");
 			wait.waitForEvent(timeout, unit);
 			AssertArgument.assertTrue(!isRevoked(), "Request has been revoked");
-			synchronized(this)
-			{
-				return null != response;
-			}
+			return isResponsed();
 		}
 		
 		public DataObject ensureResponse(long timeout, TimeUnit unit) throws InterruptedException, TimeoutException
@@ -149,56 +148,15 @@ public class JavaRpcParallelClient
 			wait.evenOcurred();
 		}
 		
-		public boolean tryAcceptResponse(DataObject a)
+		public boolean isResponseMatches(DataObject a)
 		{
-			//check response by address
-			if(tid == a.optLong("t", -1))
-			{
-				//we got the response.
-				try
-				{
-					receiveResponse(a);
-				}
-				catch(Exception e)
-				{
-					e.printStackTrace();
-				}
-				
-				return true;
-			}
-			return false;
+			return tid == a.optLong("t", -1);
 		}
 
 		public void revoke()
 		{
 			revoked = true;
 			wait.evenOcurred();
-		}
-
-		/**
-		 * Similar to the root's readResponse, but this checks request responded
-		 * before reading a new packet. This is mandantory, because other thread
-		 * also tries to take the receive's lock. The bad scenario when we
-		 * waiting for the lock to acquire, other thread receives this answer,
-		 * but after, this thread acquires the locks, ang get stucked because of
-		 * blocking.
-		 * 
-		 * Unstrucking happens when this gets other's response. This thread go
-		 * trought the receive.get() call and go back to check this request
-		 * responded.
-		 * */
-		public void tryReadResponse()
-		{
-			DataObject rec = null;
-			synchronized(receive)
-			{
-				if(!isResponsed())
-				{
-					rec = receive.get();
-				}
-			}
-			AssertArgument.assertNotNull(rec, "Received packet");
-			publishResponse(rec);
 		}
 	}
 	
@@ -211,7 +169,7 @@ public class JavaRpcParallelClient
 	{
 		synchronized (send)
 		{
-			send.publish(req);	
+			send.publish(req);
 		}
 	}
 	
@@ -226,10 +184,17 @@ public class JavaRpcParallelClient
 		//actually send the package
 		sendPacket(req);
 		
-		while(!p.isResponsed() && !p.isRevoked())
-		{
-			p.tryReadResponse();
-		}
+		//while(!p.isResponsed() && !p.isRevoked())
+		//{
+			try
+			{
+				p.wait.waitForEvent();
+			}
+			catch (InterruptedException e)
+			{
+				Mirror.propagateAnyway(e);
+			}
+		//}
 		
 		if(p.isRevoked())
 		{
@@ -246,21 +211,30 @@ public class JavaRpcParallelClient
 	
 	public void publishResponse(DataObject resp)
 	{
+		JavaClientRpcPendingRequest target = null;
 		synchronized(pendingRequests)
 		{
 			for(JavaClientRpcPendingRequest p:pendingRequests)
 			{
-				if(p.tryAcceptResponse(resp))
+				if(p.isResponseMatches(resp))
 				{
 					pendingRequests.remove(p);
-					return;
+					target = p;
+					break;
 				}
 			}
 		}
 		
-		synchronized(serverEvents)
+		if(null != target)
 		{
-			serverEvents.dispatchEvent(resp);
+			target.receiveResponse(resp);
+		}
+		else
+		{
+			synchronized(serverEvents)
+			{
+				serverEvents.dispatchEvent(resp);
+			}
 		}
 	}
 	
@@ -269,7 +243,7 @@ public class JavaRpcParallelClient
 	 * You can call this function to receiving server events without calling any
 	 * client functions.
 	 * */
-	public void readResponse() throws IOException
+	public void readResponse()
 	{
 		DataObject rec = null;
 		synchronized(receive)
@@ -278,6 +252,45 @@ public class JavaRpcParallelClient
 		}
 		AssertArgument.assertNotNull(rec, "Received packet");
 		publishResponse(rec);
+	}
+	
+	public synchronized void startPacketRead()
+	{
+		if(null == reader)
+		{
+			readResponses = true;
+			reader = new Thread()
+			{
+				@Override
+				public void run()
+				{
+					while(readResponses)
+					{
+						readResponse();
+					}
+				}
+				
+			};
+			reader.start();
+		}
+		else
+		{
+			throw new RuntimeException("Packet reader thread already started");
+		}
+	}
+	
+	public synchronized void stopPacketRead()
+	{
+		if(null != reader)
+		{
+			readResponses = false;
+			reader.interrupt();
+			reader = null;
+		}
+		else
+		{
+			throw new RuntimeException("Packet reader thread not started");
+		}
 	}
 	
 	protected boolean revokePendingRequest(JavaClientRpcPendingRequest req)
