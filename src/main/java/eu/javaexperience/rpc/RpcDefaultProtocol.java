@@ -243,13 +243,13 @@ public class RpcDefaultProtocol implements RpcProtocolHandler
 			return src;
 		}
 		
-		if(null != retType && src instanceof DataArray)
+		if(src instanceof DataArray)
 		{
 			try
 			{
 				DataArray arr = (DataArray) src;
 				
-				if(retType.isArray())
+				if(null != retType && retType.isArray())
 				{
 					ArrayList ret = new ArrayList<>();
 					Class cls = retType.getComponentType();
@@ -262,25 +262,34 @@ public class RpcDefaultProtocol implements RpcProtocolHandler
 				}
 				else
 				{
-					for(Entry<Class, Class> a:collImpl)
+					Collection ret = null;
+					
+					if(null != retType)
 					{
-						if(retType.isAssignableFrom(a.getKey()))
+						for(Entry<Class, Class> a:collImpl)
 						{
-							Collection ret = (Collection) a.getValue().newInstance();
-							
-							for(int i=0;i<arr.size();++i)
+							if(retType.isAssignableFrom(a.getKey()))
 							{
-								ret.add(extract(Object.class, arr.get(i)));
+								ret = (Collection) a.getValue().newInstance();
 							}
-							
-							return ret;
 						}
 					}
+					
+					if(null == ret)
+					{
+						ret = new ArrayList<>();
+					}
+					
+					for(int i=0;i<arr.size();++i)
+					{
+						ret.add(extract(null, arr.get(i)));
+					}
+					return ret;
 				}
 			}
 			catch(Exception e)
 			{
-				
+				Mirror.propagateAnyway(e);
 			}
 		}
 		else if(src instanceof DataObject)
@@ -299,7 +308,7 @@ public class RpcDefaultProtocol implements RpcProtocolHandler
 							
 							for(String k:obj.keys())
 							{
-								ret.put(k, extract(Object.class, obj.get(k)));
+								ret.put(k, extract(null, obj.get(k)));
 							}
 							
 							return ret;

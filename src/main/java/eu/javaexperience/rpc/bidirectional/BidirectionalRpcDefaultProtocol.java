@@ -55,7 +55,7 @@ public class BidirectionalRpcDefaultProtocol<S extends RpcSession> extends RpcDe
 			return null;
 		}
 		
-		return extract(req.getResponseData().get("r"));
+		return req.getResponseData().get("r");
 	}
 
 	@Override
