@@ -2,6 +2,7 @@ package eu.javaexperience.rpc;
 
 import eu.javaexperience.datareprez.DataObject;
 import eu.javaexperience.datareprez.DataReprezJavaConverter;
+import eu.javaexperience.semantic.references.MayNull;
 
 public interface RpcProtocolHandler extends DataReprezJavaConverter, RpcProtocolCommon
 {
@@ -20,4 +21,6 @@ public interface RpcProtocolHandler extends DataReprezJavaConverter, RpcProtocol
 	public DataObject createReturningValue(RpcRequest req, Object result);
 	
 	public DataObject createException(RpcRequest req, Throwable exception);
+	
+	public Object extract(@MayNull Class request, Object in);
 }

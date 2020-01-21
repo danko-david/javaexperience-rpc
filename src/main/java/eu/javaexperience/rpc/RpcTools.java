@@ -1,5 +1,6 @@
 package eu.javaexperience.rpc;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -7,7 +8,10 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executor;
+import java.util.concurrent.LinkedBlockingDeque;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 
 import eu.javaexperience.arrays.ArrayTools;
 import eu.javaexperience.asserts.AssertArgument;
@@ -15,9 +19,9 @@ import eu.javaexperience.collection.CollectionTools;
 import eu.javaexperience.datareprez.DataObject;
 import eu.javaexperience.datareprez.jsonImpl.DataObjectJsonImpl;
 import eu.javaexperience.exceptions.OperationSuccessfullyEnded;
-import eu.javaexperience.interfaces.simple.SimpleGet;
 import eu.javaexperience.interfaces.simple.getBy.GetBy1;
 import eu.javaexperience.interfaces.simple.getBy.GetBy2;
+import eu.javaexperience.interfaces.simple.publish.SimplePublish1;
 import eu.javaexperience.io.IOStream;
 import eu.javaexperience.io.IOStreamServer;
 import eu.javaexperience.reflect.Mirror;
@@ -192,6 +196,78 @@ public class RpcTools
 			protected @MayNull DataObject handleRequest(SESS sess, DataObject request)
 			{
 				return requestHandler.getBy(sess, request);
+			}
+		};
+	}
+	
+	public static <SOCK extends IOStream, SESS extends RpcSession> SocketRpcServer<SOCK, SESS> newParallelCallServer
+	(
+		IOStreamServer<SOCK> serverSocket,
+		int concurrency,
+		RpcProtocolHandler proto,
+		final GetBy2<SESS, SOCK, RpcProtocolHandler> sessionCreator,
+		final GetBy2<DataObject, SESS, DataObject> requestHandler
+	)
+	{
+		ThreadPoolExecutor exec =
+			new ThreadPoolExecutor(10, 300, 60, TimeUnit.SECONDS, new LinkedBlockingDeque<>());
+
+		return new SocketRpcServer<SOCK, SESS>
+		(
+			serverSocket,
+			concurrency,
+			proto
+		)
+		{
+			@Override
+			protected SESS init(SOCK socket)
+			{
+				return sessionCreator.getBy(socket, handler);
+			}
+			
+			@Override
+			protected void responseRequest(SimplePublish1<DataObject> response, SESS sess, DataObject request, Object extraCtx)
+			{
+				exec.execute
+				(
+					()->
+					{
+						RpcSessionTools.setCurrentRpcSession(sess);
+						try
+						{
+							DataObject resp = handleRequest(sess, request);
+							if(null != resp)
+							{
+								response.publish(resp);
+							}
+							else
+								
+							System.out.println("NULL response");
+						}
+						catch(Throwable t)
+						{
+							t.printStackTrace();
+						}
+						finally
+						{
+							RpcSessionTools.setCurrentRpcSession(null);
+						}
+					}
+				)
+				;
+			}
+			
+			@Override
+			protected @MayNull DataObject handleRequest(SESS sess, DataObject request)
+			{
+				return requestHandler.getBy(sess, request);
+			}
+			
+			@Override
+			public void close() throws IOException
+			{
+				super.close();
+				exec.shutdown();
 			}
 		};
 	}

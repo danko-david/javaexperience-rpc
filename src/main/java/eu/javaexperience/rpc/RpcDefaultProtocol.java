@@ -1,6 +1,20 @@
 package eu.javaexperience.rpc;
 
+import java.lang.reflect.Array;
+import java.lang.reflect.Field;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.Map.Entry;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
+
 import eu.javaexperience.asserts.AssertArgument;
+import eu.javaexperience.collection.map.KeyVal;
 import eu.javaexperience.datareprez.DataArray;
 import eu.javaexperience.datareprez.DataCommon;
 import eu.javaexperience.datareprez.DataObject;
@@ -8,6 +22,7 @@ import eu.javaexperience.datareprez.DataReprezTools;
 import eu.javaexperience.datareprez.convertFrom.DataWrapper;
 import eu.javaexperience.reflect.Mirror;
 import eu.javaexperience.reflect.Mirror.BelongTo;
+import eu.javaexperience.reflect.Mirror.ClassData;
 import eu.javaexperience.reflect.Mirror.FieldSelector;
 import eu.javaexperience.reflect.Mirror.Select;
 import eu.javaexperience.reflect.Mirror.Visibility;
@@ -65,12 +80,7 @@ public class RpcDefaultProtocol implements RpcProtocolHandler
 	@Override
 	public Object extract(Object in)
 	{
-		//TODO array unpack
-		if(transferDatatype.isNull(in))
-		{
-			return null;
-		}
-		return in;
+		return extract(null, in);
 	}
 
 	@Override
@@ -220,44 +230,128 @@ public class RpcDefaultProtocol implements RpcProtocolHandler
 		DataReprezTools.put(ret, key, value);
 	}
 
-	/*
-	Object t = in.opt("t");
-	String f = in.optString("f");
-	F func = findFunction(ctx, f);
-	try
+	@Override
+	public Object extract(Class retType, Object src)
 	{
-		if(null != func)
+		if(null == src || transferDatatype.isNull(src))
 		{
-			Object[] params = extractParameters(ctx, in, "p", func.getParameterClasses());
-			beforeCall(ctx, func, params, in);
-			Object result = func.call(ctx, f, params);
-			DataObject ret = wrapReturn(ctx, in, result, func.getReturningClass());
-			if(null != t)
+			return null;
+		}
+		
+		if(null != retType && retType.isAssignableFrom(src.getClass()))
+		{
+			return src;
+		}
+		
+		if(null != retType && src instanceof DataArray)
+		{
+			try
 			{
-				putObject(ret, "t", ret);
+				DataArray arr = (DataArray) src;
+				
+				if(retType.isArray())
+				{
+					ArrayList ret = new ArrayList<>();
+					Class cls = retType.getComponentType();
+					for(int i=0;i<arr.size();++i)
+					{
+						ret.add(extract(cls, arr.get(i)));
+					}
+					
+					return ret.toArray((Object[]) Array.newInstance(cls, 0));
+				}
+				else
+				{
+					for(Entry<Class, Class> a:collImpl)
+					{
+						if(retType.isAssignableFrom(a.getKey()))
+						{
+							Collection ret = (Collection) a.getValue().newInstance();
+							
+							for(int i=0;i<arr.size();++i)
+							{
+								ret.add(extract(Object.class, arr.get(i)));
+							}
+							
+							return ret;
+						}
+					}
+				}
 			}
-			return ret;
+			catch(Exception e)
+			{
+				
+			}
+		}
+		else if(src instanceof DataObject)
+		{
+			try
+			{
+				DataObject obj = (DataObject) src;
+				
+				if(null != retType)
+				{
+					for(Entry<Class, Class> a:mapImpl)
+					{
+						if(retType.isAssignableFrom(a.getKey()))
+						{
+							Map ret = (Map) a.getValue().newInstance();
+							
+							for(String k:obj.keys())
+							{
+								ret.put(k, extract(Object.class, obj.get(k)));
+							}
+							
+							return ret;
+						}
+					}
+				}
+				
+				Object ret = createObject(retType, obj);
+				
+				ClassData cd = Mirror.getClassData(ret.getClass());
+				
+				for(String k:obj.keys())
+				{
+					Field f = cd.getFieldByName(k);
+					if(null != f)
+					{
+						f.set(ret, extract(f.getType(), obj.get(k)));
+					}
+				}
+				
+				return ret;
+			}
+			catch(Exception e)
+			{
+				Mirror.propagateAnyway(e);
+			}
+		}
+		
+		return src;
+	}
+	
+	protected static List<Entry<Class,Class>> mapImpl  = new ArrayList<>();
+	protected static List<Entry<Class,Class>> collImpl  = new ArrayList<>();
+	static
+	{
+		mapImpl.add(new KeyVal(ConcurrentMap.class, ConcurrentHashMap.class));
+		mapImpl.add(new KeyVal(Map.class, HashMap.class));
+		collImpl.add(new KeyVal(Set.class, HashSet.class));
+		collImpl.add(new KeyVal(List.class, ArrayList.class));
+		collImpl.add(new KeyVal(Collection.class, ArrayList.class));
+		//implementation.add(new KeyVal(Entry.class, KeyVal.class));
+	}
+	
+	protected Object createObject(Class request, DataObject obj) throws Exception
+	{
+		if(obj.has("class"))
+		{
+			return Class.forName(obj.getString("class")).newInstance();
 		}
 		else
 		{
-			DataObject ret = wrapReturn(ctx, in, unservedRequest(ctx, f, in), null);
-			if(null != t)
-			{
-				putObject(ret, "t", ret);
-			}
-			return ret;
+			return request.newInstance();
 		}
 	}
-	catch(Throwable e)
-	{
-		DataObject ret = reportException(ctx, in, f, e);
-		if(null != t)
-		{
-			putObject(ret, "t", ret);
-		}
-		return ret;
-	}
-	*/
-	
-
 }

@@ -6,6 +6,7 @@ import eu.javaexperience.datareprez.DataObject;
 import eu.javaexperience.datareprez.DataReprezTools;
 import eu.javaexperience.datareprez.convertFrom.DataWrapper;
 import eu.javaexperience.datareprez.jsonImpl.DataObjectJsonImpl;
+import eu.javaexperience.interfaces.simple.getBy.GetBy3;
 import eu.javaexperience.reflect.Mirror.BelongTo;
 import eu.javaexperience.reflect.Mirror.FieldSelector;
 import eu.javaexperience.reflect.Mirror.Select;
@@ -107,6 +108,21 @@ public class BidirectionalRpcDefaultProtocol<S extends RpcSession> extends RpcDe
 	
 	public static final BidirectionalRpcDefaultProtocol<SimpleRpcSession> DEFAULT_PROTOCOL_HANDLER_WITH_CLASS = new BidirectionalRpcDefaultProtocol<>(new DataObjectJsonImpl(), DEFAULT_RPC_DATA_WRAPPER_WITH_CLASS);
 
+	public static final BidirectionalRpcDefaultProtocol<SimpleRpcSession> createWithClassFetcher(DataWrapper dw, GetBy3<Object, BidirectionalRpcProtocolHandler, Class, DataObject> fetcher)
+	{
+		return new BidirectionalRpcDefaultProtocol<SimpleRpcSession>(new DataObjectJsonImpl(), dw)
+		{
+			@Override
+			protected Object createObject(Class request, DataObject obj) throws Exception
+			{
+				return fetcher.getBy(this, request, obj);
+			}
+		};
+	}
+	
+	//DEFAULT_PROTOCOL_HANDLER_WITH_CLASS = new BidirectionalRpcDefaultProtocol<>(new DataObjectJsonImpl(), DEFAULT_RPC_DATA_WRAPPER_WITH_CLASS)
+	
+	
 	@Override
 	public void putNamespace(RpcRequest req, String namespace)
 	{

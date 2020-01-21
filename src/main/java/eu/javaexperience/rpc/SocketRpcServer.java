@@ -1,5 +1,6 @@
 package eu.javaexperience.rpc;
 
+import java.io.Closeable;
 import java.io.IOException;
 
 import eu.javaexperience.asserts.AssertArgument;
@@ -17,7 +18,7 @@ import eu.javaexperience.reflect.Mirror;
 import eu.javaexperience.semantic.references.MayNull;
 import eu.javaexperience.server.AbstractServer;
 
-public abstract class SocketRpcServer<SOCK extends IOStream, SESS extends RpcSession> extends AbstractServer<SOCK>
+public abstract class SocketRpcServer<SOCK extends IOStream, SESS extends RpcSession> extends AbstractServer<SOCK> implements Closeable
 {
 	protected final RpcProtocolHandler handler;
 	
@@ -149,4 +150,10 @@ public abstract class SocketRpcServer<SOCK extends IOStream, SESS extends RpcSes
 	 * terminated.
 	 * */
 	protected abstract @MayNull DataObject handleRequest(SESS sess, DataObject request);
+	
+	@Override
+	public void close() throws IOException
+	{
+		srv.close();
+	}
 }

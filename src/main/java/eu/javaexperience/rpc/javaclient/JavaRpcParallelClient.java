@@ -3,6 +3,7 @@ package eu.javaexperience.rpc.javaclient;
 import java.io.Closeable;
 import java.io.IOException;
 import java.util.LinkedList;
+import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicLong;
@@ -15,7 +16,11 @@ import eu.javaexperience.datareprez.DataSender;
 import eu.javaexperience.interfaces.simple.SimpleGet;
 import eu.javaexperience.interfaces.simple.getBy.GetBy1;
 import eu.javaexperience.interfaces.simple.publish.SimplePublish1;
-import eu.javaexperience.multithread.notify.WaitForSingleEvent;
+import eu.javaexperience.log.JavaExperienceLoggingFacility;
+import eu.javaexperience.log.LogLevel;
+import eu.javaexperience.log.Loggable;
+import eu.javaexperience.log.Logger;
+import eu.javaexperience.log.LoggingTools;
 import eu.javaexperience.patterns.behavioral.mediator.EventMediator;
 import eu.javaexperience.reflect.Mirror;
 import eu.javaexperience.rpc.RpcProtocolHandler;
@@ -23,6 +28,8 @@ import eu.javaexperience.semantic.references.MayNull;
 
 public class JavaRpcParallelClient
 {
+	protected static final Logger LOG = JavaExperienceLoggingFacility.getLogger(new Loggable("JavaRpcParallelClient"));
+	
 	protected EventMediator<DataObject> serverEvents = new EventMediator<>();
 	protected RpcProtocolHandler proto;
 
@@ -99,7 +106,7 @@ public class JavaRpcParallelClient
 			close();
 		}
 		
-		protected WaitForSingleEvent wait = new WaitForSingleEvent();
+		protected Semaphore lock = new Semaphore(0);
 		
 		public synchronized boolean isResponsed()
 		{
@@ -114,7 +121,7 @@ public class JavaRpcParallelClient
 		public boolean waitResponse(long timeout, TimeUnit unit) throws InterruptedException
 		{
 			AssertArgument.assertTrue(!isRevoked(), "Request has been revoked");
-			wait.waitForEvent(timeout, unit);
+			lock.tryAcquire(timeout, unit);
 			AssertArgument.assertTrue(!isRevoked(), "Request has been revoked");
 			return isResponsed();
 		}
@@ -145,7 +152,7 @@ public class JavaRpcParallelClient
 			{
 				response = data;
 			}
-			wait.evenOcurred();
+			lock.release(Integer.MAX_VALUE);
 		}
 		
 		public boolean isResponseMatches(DataObject a)
@@ -156,7 +163,7 @@ public class JavaRpcParallelClient
 		public void revoke()
 		{
 			revoked = true;
-			wait.evenOcurred();
+			lock.release(Integer.MAX_VALUE);
 		}
 	}
 	
@@ -167,6 +174,10 @@ public class JavaRpcParallelClient
 	
 	protected void sendPacket(DataObject req)
 	{
+		if(LOG.mayLog(LogLevel.TRACE))
+		{
+			LoggingTools.tryLogFormat(LOG, LogLevel.TRACE, "Sending packet `%s`", req);
+		}
 		synchronized (send)
 		{
 			send.publish(req);
@@ -184,17 +195,14 @@ public class JavaRpcParallelClient
 		//actually send the package
 		sendPacket(req);
 		
-		//while(!p.isResponsed() && !p.isRevoked())
-		//{
-			try
-			{
-				p.wait.waitForEvent();
-			}
-			catch (InterruptedException e)
-			{
-				Mirror.propagateAnyway(e);
-			}
-		//}
+		try
+		{
+			p.lock.acquire();
+		}
+		catch (InterruptedException e)
+		{
+			Mirror.propagateAnyway(e);
+		}
 		
 		if(p.isRevoked())
 		{
@@ -227,10 +235,18 @@ public class JavaRpcParallelClient
 		
 		if(null != target)
 		{
+			if(LOG.mayLog(LogLevel.TRACE))
+			{
+				LoggingTools.tryLogFormat(LOG, LogLevel.TRACE, "Answer request `%s` with response `%s`", target, resp);
+			}
 			target.receiveResponse(resp);
 		}
 		else
 		{
+			if(LOG.mayLog(LogLevel.TRACE))
+			{
+				LoggingTools.tryLogFormat(LOG, LogLevel.TRACE, "Server event received: `%s`", resp);
+			}
 			synchronized(serverEvents)
 			{
 				serverEvents.dispatchEvent(resp);
