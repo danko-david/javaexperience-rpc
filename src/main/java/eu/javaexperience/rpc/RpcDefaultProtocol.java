@@ -314,22 +314,27 @@ public class RpcDefaultProtocol implements RpcProtocolHandler
 							return ret;
 						}
 					}
-				}
-				
-				Object ret = createObject(retType, obj);
-				
-				ClassData cd = Mirror.getClassData(ret.getClass());
-				
-				for(String k:obj.keys())
-				{
-					Field f = cd.getFieldByName(k);
-					if(null != f)
+					
+					//if not a map type, try wrap into an object
+					Object ret = createObject(retType, obj);
+					if(null != ret)
 					{
-						f.set(ret, extract(f.getType(), obj.get(k)));
+						ClassData cd = Mirror.getClassData(ret.getClass());
+						
+						for(String k:obj.keys())
+						{
+							Field f = cd.getFieldByName(k);
+							if(null != f)
+							{
+								f.set(ret, extract(f.getType(), obj.get(k)));
+							}
+						}
+						
+						return ret;
 					}
 				}
 				
-				return ret;
+				//otherwise return raw without any wrap.
 			}
 			catch(Exception e)
 			{
