@@ -3,9 +3,9 @@ package eu.javaexperience.rpc.api.doc;
 import java.util.HashMap;
 import java.util.Map;
 
-import eu.javaexperience.datareprez.PropertyAccessTools;
-import eu.javaexperience.datareprez.WellKnownDataAccessors;
 import eu.javaexperience.reflect.Mirror;
+import eu.javaexperience.reflect.property.PropertyAccessTools;
+import eu.javaexperience.reflect.property.WellKnownDataAccessors;
 
 public class DocumentationRegistry implements DocumentationApi
 {

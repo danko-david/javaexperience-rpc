@@ -1,0 +1,5 @@
+
+
+
+Security test:
+	- Maximum packet length (ensure client can't send eg. 2 Gb one liner json packet and crash the JVM)

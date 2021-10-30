@@ -14,9 +14,9 @@ import java.util.concurrent.ConcurrentMap;
 
 import eu.javaexperience.arrays.ArrayTools;
 import eu.javaexperience.collection.map.SmallMap;
+import eu.javaexperience.datareprez.ArrayLike;
 import eu.javaexperience.datareprez.DataObject;
 import eu.javaexperience.datareprez.DataReprezTools;
-import eu.javaexperience.datareprez.convertFrom.ArrayLike;
 import eu.javaexperience.reflect.CastTo;
 import eu.javaexperience.reflect.FieldSelectTools;
 import eu.javaexperience.reflect.Mirror;

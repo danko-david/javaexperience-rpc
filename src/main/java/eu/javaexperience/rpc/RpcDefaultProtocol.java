@@ -233,7 +233,7 @@ public class RpcDefaultProtocol implements RpcProtocolHandler
 	@Override
 	public Object extract(Class retType, Object src)
 	{
-		if(null == src || transferDatatype.isNull(src))
+		if(null == src)
 		{
 			return null;
 		}
